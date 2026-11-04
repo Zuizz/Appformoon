@@ -1,9 +1,15 @@
 /**
  * BioQuiz Tutor — API Helper
- * All backend requests go through the Vite proxy (/api → localhost:3001/api)
+ * In local dev: requests use Vite proxy (/api → http://localhost:3001/api)
+ * In production: requests use VITE_API_URL (e.g. https://your-backend.onrender.com)
  */
 
-const API_BASE = '/api';
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+// Format base URL to always point to /api cleanly
+export const API_BASE = rawApiUrl
+  ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, '')}/api`)
+  : '/api';
 
 /**
  * Generic fetch wrapper with error handling.
@@ -31,7 +37,9 @@ async function request(endpoint, options = {}) {
     return { data: body };
   } catch (err) {
     return {
-      error: 'Unable to connect to the backend server. Please verify the server is running on port 3001.',
+      error: rawApiUrl
+        ? 'Unable to connect to the backend server. Please verify your backend is active and awake.'
+        : 'Unable to connect to the backend server. Please verify the server is running on port 3001.',
       isRateLimit: false,
       isMissingKey: false,
     };
