@@ -4,12 +4,22 @@
  * In production: requests use BACK_API_URL or VITE_API_URL
  */
 
-const rawApiUrl = (import.meta.env.BACK_API_URL || import.meta.env.VITE_API_URL || '').trim();
+const rawApiUrl = (
+  import.meta.env.BACK_API_URL ||
+  import.meta.env.VITE_API_URL ||
+  ''
+).trim();
 
-// Normalize URL: strip trailing slashes, remove accidental subpaths, ensure clean /api suffix
+// Normalize URL: auto-prepend https:// if missing, strip trailing slashes & ensure clean /api suffix
 function computeApiBase() {
   if (!rawApiUrl) return '/api';
   let base = rawApiUrl.replace(/\/+$/, '');
+
+  // If user pasted a domain without protocol (e.g. "app.up.railway.app")
+  if (!base.startsWith('http://') && !base.startsWith('https://')) {
+    base = `https://${base}`;
+  }
+
   // Strip accidental endpoint suffixes if user pasted a full route
   base = base.replace(/\/extract-topics$/, '');
   base = base.replace(/\/generate-quiz$/, '');
@@ -17,10 +27,12 @@ function computeApiBase() {
   if (base.endsWith('/api')) {
     base = base.slice(0, -4);
   }
+
   return `${base}/api`;
 }
 
 export const API_BASE = computeApiBase();
+console.log('[BioQuiz Tutor] Configured API_BASE:', API_BASE);
 
 /**
  * Generic fetch wrapper with error handling.
@@ -42,7 +54,7 @@ async function request(endpoint, options = {}) {
     if (!res.ok) {
       console.error(`[BioQuiz API Error] Status ${res.status} from ${targetUrl}`, body);
       return {
-        error: body.message || body.error || `Server returned error (${res.status}) while requesting: ${targetUrl}`,
+        error: body.message || body.error || `Server returned error (${res.status}) while requesting ${targetUrl}`,
         isRateLimit: res.status === 429,
         isMissingKey: body.error === 'missing_api_key',
       };
@@ -52,9 +64,7 @@ async function request(endpoint, options = {}) {
   } catch (err) {
     console.error(`[BioQuiz Network Error] Failed to connect to ${targetUrl}:`, err);
     return {
-      error: rawApiUrl
-        ? `Unable to connect to backend at ${targetUrl}. Please verify your backend service is running and healthy.`
-        : `Unable to connect to the backend server. No backend URL is configured (calling ${targetUrl}).`,
+      error: `Unable to connect to ${targetUrl}. Please verify the backend is active.`,
       isRateLimit: false,
       isMissingKey: false,
     };
