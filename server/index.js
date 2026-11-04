@@ -40,6 +40,16 @@ app.get('/api/history', handleGetHistory);
 app.use('/api/topics', topicsRouter);
 app.use('/api/quiz', quizRouter);
 
+// Root health check endpoint (for Railway / browser verification)
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'BioQuiz Server',
+    hasApiKey: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()),
+    model: process.env.GROQ_MODEL || 'not set'
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -49,11 +59,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Start HTTP server
-app.listen(PORT, () => {
+// Start HTTP server on 0.0.0.0 for containerized / cloud hosting
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`BioQuiz server running on port ${PORT}`);
   if (!process.env.GROQ_API_KEY) {
-    console.warn(`[WARNING] GROQ_API_KEY is not set. Please add it to your .env file.`);
+    console.warn(`[WARNING] GROQ_API_KEY is not set. Please add it to your environment variables.`);
   } else {
     console.log(`[INFO] GROQ_API_KEY detected. Model: ${process.env.GROQ_MODEL || 'default'}`);
   }

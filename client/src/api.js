@@ -1,15 +1,26 @@
 /**
  * BioQuiz Tutor — API Helper
  * In local dev: requests use Vite proxy (/api → http://localhost:3001/api)
- * In production: requests use VITE_API_URL (e.g. https://your-backend.onrender.com)
+ * In production: requests use BACK_API_URL or VITE_API_URL
  */
 
-const rawApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.BACK_API_URL)?.trim();
+const rawApiUrl = (import.meta.env.BACK_API_URL || import.meta.env.VITE_API_URL || '').trim();
 
-// Format base URL to always point to /api cleanly
-export const API_BASE = rawApiUrl
-  ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, '')}/api`)
-  : '/api';
+// Normalize URL: strip trailing slashes, remove accidental subpaths, ensure clean /api suffix
+function computeApiBase() {
+  if (!rawApiUrl) return '/api';
+  let base = rawApiUrl.replace(/\/+$/, '');
+  // Strip accidental endpoint suffixes if user pasted a full route
+  base = base.replace(/\/extract-topics$/, '');
+  base = base.replace(/\/generate-quiz$/, '');
+  base = base.replace(/\/submit-results$/, '');
+  if (base.endsWith('/api')) {
+    base = base.slice(0, -4);
+  }
+  return `${base}/api`;
+}
+
+export const API_BASE = computeApiBase();
 
 /**
  * Generic fetch wrapper with error handling.
@@ -18,8 +29,10 @@ export const API_BASE = rawApiUrl
  * @returns {Promise<{data?: any, error?: string, isRateLimit?: boolean, isMissingKey?: boolean}>}
  */
 async function request(endpoint, options = {}) {
+  const targetUrl = `${API_BASE}${endpoint}`;
+
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(targetUrl, {
       headers: { 'Content-Type': 'application/json' },
       ...options,
     });
@@ -27,8 +40,9 @@ async function request(endpoint, options = {}) {
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      console.error(`[BioQuiz API Error] Status ${res.status} from ${targetUrl}`, body);
       return {
-        error: body.message || body.error || `Server returned error (${res.status})`,
+        error: body.message || body.error || `Server returned error (${res.status}) while requesting: ${targetUrl}`,
         isRateLimit: res.status === 429,
         isMissingKey: body.error === 'missing_api_key',
       };
@@ -36,10 +50,11 @@ async function request(endpoint, options = {}) {
 
     return { data: body };
   } catch (err) {
+    console.error(`[BioQuiz Network Error] Failed to connect to ${targetUrl}:`, err);
     return {
       error: rawApiUrl
-        ? 'Unable to connect to the backend server. Please verify your backend is active and awake.'
-        : 'Unable to connect to the backend server. Please verify the server is running on port 3001.',
+        ? `Unable to connect to backend at ${targetUrl}. Please verify your backend service is running and healthy.`
+        : `Unable to connect to the backend server. No backend URL is configured (calling ${targetUrl}).`,
       isRateLimit: false,
       isMissingKey: false,
     };
