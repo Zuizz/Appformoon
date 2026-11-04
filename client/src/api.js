@@ -4,7 +4,7 @@
  * In production: requests use VITE_API_URL (e.g. https://your-backend.onrender.com)
  */
 
-const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+const rawApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.BACK_API_URL)?.trim();
 
 // Format base URL to always point to /api cleanly
 export const API_BASE = rawApiUrl
