@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment files & Secrets
+.env
+.env*.local
+server/.env
+client/.env
+!.env.example
+!server/.env.example
+
+# Database
+server/prisma/dev.db
+server/prisma/dev.db-journal
+*.db
+*.db-journal
+
+# Production build output
+client/dist/
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
